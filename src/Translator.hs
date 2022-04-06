@@ -12,7 +12,7 @@ data ErlangToken
   | ErlMap [(ErlangToken, ErlangToken)]
   deriving (Show)
 
-class Erlangable a where
+class Representation a where
   translate :: a -> ErlangToken
 
 type Abstract = [Form]
@@ -22,7 +22,7 @@ data Form
   | FormFunction Function
   deriving (Show)
 
-instance Erlangable Form where
+instance Representation Form where
   translate (FormAttribute attr) = translate attr
   translate (FormFunction func) = translate func
 
@@ -33,7 +33,7 @@ data Atribute = Atribute
   }
   deriving (Show)
 
-instance Erlangable Atribute where
+instance Representation Atribute where
   translate (Atribute anno name value) =
     ErlTuple [ErlAtom "attribute", ErlInt anno, ErlAtom name, value]
 
@@ -41,11 +41,11 @@ data Function = Function
   { funcAnno :: Integer,
     funcName :: String,
     funcArity :: Integer,
-    funcClauses :: [Clause]
+    funcClauses :: [FunctionClause]
   }
   deriving (Show)
 
-instance Erlangable Function where
+instance Representation Function where
   translate (Function anno name arity clauses) =
     ErlTuple
       [ ErlAtom "function",
@@ -64,7 +64,7 @@ data Literal
   -- TODO binary
   deriving (Show)
 
-instance Erlangable Literal where
+instance Representation Literal where
   translate (LiteralAtom anno atom) = ErlTuple [ErlAtom "atom", ErlInt anno, ErlAtom atom]
   translate (LiteralChar anno char) = ErlTuple [ErlAtom "char", ErlInt anno, ErlChar char]
   translate (LiteralFloat anno float) = ErlTuple [ErlAtom "float", ErlInt anno, ErlFloat float]
@@ -78,15 +78,17 @@ data Pattern
   | PatternInteger Integer Integer
   | PatternString Integer String
   | PatternVar Integer String
+  | PatternUniversal Integer
   deriving (Show)
 
-instance Erlangable Pattern where
+instance Representation Pattern where
   translate (PatternAtom anno atom) = ErlTuple [ErlAtom "atom", ErlInt anno, ErlAtom atom]
   translate (PatternChar anno char) = ErlTuple [ErlAtom "char", ErlInt anno, ErlChar char]
   translate (PatternFloat anno float) = ErlTuple [ErlAtom "float", ErlInt anno, ErlFloat float]
   translate (PatternInteger anno i) = ErlTuple [ErlAtom "integer", ErlInt anno, ErlInt i]
   translate (PatternString anno s) = ErlTuple [ErlAtom "string", ErlInt anno, ErlStr s]
   translate (PatternVar anno var) = ErlTuple [ErlAtom "var", ErlInt anno, ErlAtom var]
+  translate (PatternUniversal anno) = ErlTuple [ErlAtom "var", ErlInt anno, ErlAtom "_"]
 
 data Guard
   = GuardNil Integer
@@ -95,20 +97,22 @@ data Guard
 
 -- TODO guards
 
-instance Erlangable Guard where
+type GuardSequence = [Guard]
+
+instance Representation Guard where
   translate (GuardNil anno) = ErlTuple [ErlAtom "nil", ErlInt anno]
   translate (GuardAtom anno atom) = ErlTuple [ErlAtom "atom", ErlInt anno, ErlAtom atom]
 
-data Clause = ClauseFunction
-  { clauseAnno :: Integer,
-    clausePS :: [Pattern],
-    clauseGS :: [Guard],
-    clauseBody :: Literal -- todo
+data FunctionClause = FunctionClause
+  { functionClauseAnno :: Integer,
+    functionClausePS :: [Pattern],
+    functionClauseGS :: GuardSequence,
+    functionClauseBody :: Expr
   }
   deriving (Show)
 
-instance Erlangable Clause where
-  translate (ClauseFunction anno ps gs body) =
+instance Representation FunctionClause where
+  translate (FunctionClause anno ps gs body) =
     ErlTuple
       [ ErlAtom "clause",
         ErlInt anno,
@@ -116,6 +120,59 @@ instance Erlangable Clause where
         ErlList (map translate gs),
         ErlList [translate body]
       ]
+
+data CaseClause = CaseClause
+  { caseClauseAnno :: Integer,
+    caseClausePS :: Pattern,
+    caseClauseGS :: GuardSequence,
+    caseClauseBody :: Body
+  }
+  deriving (Show)
+
+instance Representation CaseClause where
+  translate (CaseClause anno ps gs body) =
+    ErlTuple
+      [ ErlAtom "clause",
+        ErlInt anno,
+        ErlList [translate ps],
+        ErlList $ map translate gs,
+        ErlList $ map translate body
+      ]
+
+type Body = [Expr]
+
+data Expr
+  = ExprAtom Integer String
+  | ExprFunctionCall
+      { exprFunctionCallAnno :: Integer,
+        exprFunctionCallFunc :: Expr,
+        exprFunctionCallArgs :: [Expr]
+      }
+  | ExprRemoteCall
+      { exprRemoteCallAnno :: Integer,
+        exprRemoteCallModule :: Expr,
+        exprRemoteCallFunc :: Expr,
+        exprRemoteCallArgs :: [Expr]
+      }
+  | ExprMatch Integer Pattern Expr
+  | ExprCase
+      { exprCaseAnno :: Integer,
+        exprCaseExpr :: Expr,
+        exprCaseClauses :: [FunctionClause]
+      }
+  deriving (Show)
+
+instance Representation Expr where
+  translate (ExprAtom anno atom) =
+    ErlTuple [ErlAtom "atom", ErlInt anno, ErlAtom atom]
+  translate (ExprCase anno expr clauses) =
+    ErlTuple [ErlAtom "case", ErlInt anno, translate expr, ErlList $ map translate clauses]
+  translate (ExprFunctionCall anno func args) =
+    ErlTuple [ErlAtom "call", ErlInt anno, translate func, ErlList $ map translate args]
+  translate (ExprRemoteCall anno module' func args) =
+    ErlTuple [ErlAtom "remote", ErlInt anno, translate module', translate func, ErlList $ map translate args]
+  translate (ExprMatch anno pattern expr) =
+    ErlTuple [ErlAtom "match", ErlInt anno, translate pattern, translate expr]
 
 moduleAttr :: Integer -> String -> Atribute
 moduleAttr i name = Atribute i "module" (ErlAtom name)
@@ -135,4 +192,4 @@ exampleTmpModule =
     FormFunction $ Function 3 "fun" 0 [clause]
   ]
   where
-    clause = ClauseFunction 3 [] [] (LiteralAtom 3 "hello")
+    clause = FunctionClause 3 [] [] (ExprAtom 3 "hello")
