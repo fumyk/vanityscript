@@ -7,11 +7,11 @@ cabal-version: 1.12
 name:           vanityscript
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/vanityscript#readme>
-homepage:       https://github.com/githubuser/vanityscript#readme
-bug-reports:    https://github.com/githubuser/vanityscript/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2022 Author name here
+homepage:       https://github.com/fumyk/vanityscript#readme
+bug-reports:    https://github.com/fumyk/vanityscript/issues
+author:         Vladislav Loginov
+maintainer:     prchnq@gmail.com
+copyright:      2022 fumyk
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/vanityscript
+  location: https://github.com/fumyk/vanityscript
 
 library
   exposed-modules:
@@ -32,6 +32,8 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , bytestring
+    , parsec
   default-language: Haskell2010
 
 executable vanityscript-exe
@@ -43,6 +45,8 @@ executable vanityscript-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
+    , parsec
     , vanityscript
   default-language: Haskell2010
 
@@ -56,5 +60,7 @@ test-suite vanityscript-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
+    , parsec
     , vanityscript
   default-language: Haskell2010
