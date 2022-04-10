@@ -1,4 +1,5 @@
 -- {-# LANGUAGE OverloadedStrings #-}
+-- {-# LANGUAGE FlexibleContexts #-}
 
 module VanityParser where
 
@@ -25,19 +26,7 @@ va :: ParsecT String u Identity String
 va = many1 (letter <|> digit)
 
 pAttr :: ParsecT String u Identity (String, String)
-pAttr = do
-  n <- va
-  space *> spaces
-  v <- va
-  return (n, v)
+pAttr = (,) <$> (va <* space <* spaces) <*> va
 
--- pModule :: Parser Header
--- pModule = do
---   string "module" *> space *> spaces
---   name <- va
---   newline
---   attr <- many pAttr
---   return $ Header name attr
-
-pModule' :: ParsecT String u Identity Header
-pModule' = Header <$> (string "module" *> space *> spaces *> va <* newline) <*> sepBy pAttr newline
+pModule :: ParsecT String u Identity Header
+pModule = Header <$> (string "module" *> space *> spaces *> va <* newline) <*> sepBy pAttr newline
