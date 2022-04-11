@@ -182,8 +182,8 @@ exportAttr i funcs =
   let pairToErlTuple (s, a) = ErlTuple [ErlAtom s, ErlInt a]
    in Atribute i "export" (ErlList $ map pairToErlTuple funcs)
 
-translateAbstract :: Abstract -> [ErlangToken]
-translateAbstract = map translate
+translateAbstract :: Abstract -> ErlangToken
+translateAbstract = ErlList <$> map translate
 
 exampleTmpModule :: Abstract
 exampleTmpModule =

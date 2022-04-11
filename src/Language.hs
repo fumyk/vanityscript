@@ -1,10 +1,20 @@
 module Language where
 
-data Header
-  = Header {
-      moduleName :: String,
-      attributes :: [(String, String)]
-  }
-  deriving Show
+import Translator (ErlangToken)
 
--- data Expression 
+data Header = Header
+  { moduleName :: String,
+    attributes :: [(String, String)]
+    -- attributes :: [ErlangToken]
+  }
+  deriving (Show)
+
+-- data HFunction = HFunction
+--   { hFuncLine :: Int,
+--     hFuncName :: String,
+--     hFuncArgs :: [String]
+--   }
+--   deriving (Show)
+
+-- data Expression
+
